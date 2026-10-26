@@ -247,27 +247,7 @@ func (s *Server) buildSync(sess *Session, since, cur int64, fullState bool, limi
 		}
 	}
 
-	otk := map[string]int{}
-	krows, _ := s.db.Query("SELECT algorithm, COUNT(*) FROM one_time_keys WHERE user_id = ? AND device_id = ? GROUP BY algorithm", uid, sess.DeviceID)
-	if krows != nil {
-		for krows.Next() {
-			var a string
-			var n int
-			krows.Scan(&a, &n)
-			otk[a] = n
-		}
-		krows.Close()
-	}
-	fallback := []string{}
-	frows, _ := s.db.Query("SELECT algorithm FROM fallback_keys WHERE user_id = ? AND device_id = ? AND used = 0", uid, sess.DeviceID)
-	if frows != nil {
-		for frows.Next() {
-			var a string
-			frows.Scan(&a)
-			fallback = append(fallback, a)
-		}
-		frows.Close()
-	}
+	otk, fallback := s.keyCounts(uid, sess.DeviceID)
 
 	resp := map[string]any{
 		"next_batch":                       tok(cur),
@@ -280,6 +260,32 @@ func (s *Server) buildSync(sess *Session, since, cur int64, fullState bool, limi
 		"presence":                         map[string]any{"events": []any{}},
 	}
 	return resp, has, nil
+}
+
+// keyCounts returns the device's one-time key counts and unused fallback key types.
+func (s *Server) keyCounts(uid, device string) (map[string]int, []string) {
+	otk := map[string]int{}
+	krows, _ := s.db.Query("SELECT algorithm, COUNT(*) FROM one_time_keys WHERE user_id = ? AND device_id = ? GROUP BY algorithm", uid, device)
+	if krows != nil {
+		for krows.Next() {
+			var a string
+			var n int
+			krows.Scan(&a, &n)
+			otk[a] = n
+		}
+		krows.Close()
+	}
+	fallback := []string{}
+	frows, _ := s.db.Query("SELECT algorithm FROM fallback_keys WHERE user_id = ? AND device_id = ? AND used = 0", uid, device)
+	if frows != nil {
+		for frows.Next() {
+			var a string
+			frows.Scan(&a)
+			fallback = append(fallback, a)
+		}
+		frows.Close()
+	}
+	return otk, fallback
 }
 
 func (s *Server) accountDataSince(uid, roomID string, since, cur int64) ([]any, error) {

@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -450,6 +451,7 @@ func TestSignatureUploadRules(t *testing.T) {
 // fuzzRoutes are hit with random bodies by FuzzEndpoints.
 var fuzzRoutes = []struct{ method, path string }{
 	{"POST", "/_matrix/client/v3/createRoom"},
+	{"POST", slidingSyncPath},
 	{"PUT", "/_matrix/client/v3/rooms/ROOM/send/m.room.message/TXN"},
 	{"PUT", "/_matrix/client/v3/rooms/ROOM/send/m.room.member/TXN"},
 	{"PUT", "/_matrix/client/v3/rooms/ROOM/send/m.room.power_levels/TXN"},
@@ -800,5 +802,43 @@ func TestUserSearchPrivacy(t *testing.T) {
 	s.cfg.SearchAllUsers = true
 	if !found()["@bobby:test.local"] {
 		t.Fatal("search_all_users = true still hides bobby")
+	}
+}
+
+func TestLegacyR0Paths(t *testing.T) {
+	s := newTestServer(t)
+	h := s.routes()
+	_, tok := addUser(t, s, "alice")
+	if code, out := do(t, h, "GET", "/_matrix/client/r0/login", "", nil); code != 200 || out["flows"] == nil {
+		t.Fatalf("r0 login flows: %d %v", code, out)
+	}
+	code, out := do(t, h, "POST", "/_matrix/client/r0/login", "", map[string]any{
+		"type": "m.login.password", "identifier": map[string]any{"type": "m.id.user", "user": "alice"}, "password": "password123"})
+	if code != 200 || out["access_token"] == nil {
+		t.Fatalf("r0 login: %d %v", code, out)
+	}
+	code, out = do(t, h, "POST", "/_matrix/client/r0/createRoom", tok, map[string]any{})
+	if code != 200 {
+		t.Fatalf("r0 createRoom: %d %v", code, out)
+	}
+	room := out["room_id"].(string)
+	// escaped room ID in the path
+	if code, out := do(t, h, "GET", "/_matrix/client/r0/rooms/"+url.PathEscape(room)+"/state", tok, nil); code != 200 {
+		t.Fatalf("r0 state: %d %v", code, out)
+	}
+	if code, out := do(t, h, "GET", "/_matrix/client/r0/sync?timeout=0", tok, nil); code != 200 || out["next_batch"] == nil {
+		t.Fatalf("r0 sync: %d %v", code, out)
+	}
+	if code, _ := do(t, h, "GET", "/_matrix/media/r0/config", tok, nil); code != 200 {
+		t.Fatalf("r0 media config: %d", code)
+	}
+	if code, out := do(t, h, "GET", "/_matrix/client/unstable/room_keys/version", tok, nil); code != 404 || out["errcode"] != "M_NOT_FOUND" {
+		t.Fatalf("unstable room_keys: %d %v", code, out)
+	}
+	if code, out := do(t, h, "GET", "/_matrix/client/unstable/org.matrix.msc9999/thing", tok, nil); code != 404 || out["errcode"] != "M_UNRECOGNIZED" {
+		t.Fatalf("unknown unstable: %d %v", code, out)
+	}
+	if code, out := do(t, h, "GET", "/_matrix/client/r9/login", "", nil); code != 404 || out["errcode"] != "M_UNRECOGNIZED" {
+		t.Fatalf("unknown version: %d %v", code, out)
 	}
 }

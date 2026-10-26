@@ -161,6 +161,7 @@ type Server struct {
 	toDeviceSeen       seenIDs        // incoming to-device message IDs (fede2ee.go)
 	remoteKeys         remoteKeyCache // other servers' device keys
 	mediaFetch         mediaFetches   // remote media downloads in progress (fedmedia.go)
+	ss                 ssStore        // sliding sync connections (slidingsync.go)
 
 	// admin commands (admin.go)
 	adminRoomID         atomic.Value // string
@@ -394,9 +395,9 @@ func (s *Server) waitCh() chan struct{} {
 }
 
 // landingPage is served at "/" so you can see the server is up.
-// 連歌 (renka): linked verse, people taking turns adding lines.
+// The name comes from 連歌 (renga): linked verse, people taking turns adding lines.
 const landingPage = `renka wa ikiteimasu.
-(連歌は生きています — renka is alive)
+(Renka は生きています — renka is alive)
 
 kimi ga ikku, boku ga tsugu — you add a line, I add the next.
 
@@ -603,6 +604,7 @@ func (s *Server) routes() http.Handler {
 
 	// sync
 	A("GET "+c+"/sync", s.hSync)
+	A("POST "+slidingSyncPath, s.hSlidingSync)
 	A("POST "+c+"/user/{userId}/filter", s.hPostFilter)
 	A("GET "+c+"/user/{userId}/filter/{filterId}", s.hGetFilter)
 
@@ -676,5 +678,36 @@ func (s *Server) routes() http.Handler {
 	O("/", func(w http.ResponseWriter, r *http.Request, _ *Session) (any, error) {
 		return nil, errf(404, "M_UNRECOGNIZED", "unrecognized request")
 	})
-	return cors(mux)
+	return cors(legacyPaths(mux))
+}
+
+// legacyPaths serves the old r0 and unstable API paths as v3. Same API;
+// older clients (Element Classic on Android) still use them for some calls.
+var legacyPrefixes = [...][2]string{
+	{"/_matrix/client/r0/", "/_matrix/client/v3/"},
+	{"/_matrix/client/unstable/", "/_matrix/client/v3/"},
+	{"/_matrix/media/r0/", "/_matrix/media/v3/"},
+}
+
+func legacyPaths(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, p := range legacyPrefixes {
+			if strings.HasPrefix(r.URL.Path, p[0]) {
+				if _, pattern := mux.Handler(r); pattern != "/" {
+					break // a route of its own (sliding sync lives under unstable/)
+				}
+				r2 := new(http.Request)
+				*r2 = *r
+				u := *r.URL
+				u.Path = p[1] + u.Path[len(p[0]):]
+				if strings.HasPrefix(u.RawPath, p[0]) {
+					u.RawPath = p[1] + u.RawPath[len(p[0]):]
+				}
+				r2.URL = &u
+				r = r2
+				break
+			}
+		}
+		mux.ServeHTTP(w, r)
+	})
 }

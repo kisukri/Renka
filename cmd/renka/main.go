@@ -3,7 +3,7 @@ package main
 
 import "renka/internal/server"
 
-// version is set at build time: -ldflags "-X main.version=v0.1.0"
+// set at build time with -ldflags "-X main.version=..."
 var version = "dev"
 
 func main() { server.Main(version) }

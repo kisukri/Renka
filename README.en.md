@@ -13,9 +13,9 @@ a poem no one could write alone, born from everyone's words. Renka is named afte
 Renka is a lightweight Matrix homeserver written in Go, about 13,000 lines. One executable plus one
 SQLite database file, ~10–25MB idle, well suited to low-end Linux servers (x86 / ARM).
 
-It works with standard Matrix clients such as Element, FluffyChat and Cinny, with push notifications
-while the app is in the background. Federation with other servers (Synapse included) is supported and off
-by default (see below).
+It works with standard Matrix clients such as Element (the new Element X and Element Classic), FluffyChat
+and Cinny, with push notifications while the app is in the background. Federation with other servers
+(Synapse included) is supported and off by default (see below).
 
 ## How Matrix works (in brief)
 
@@ -77,6 +77,7 @@ Go keeps one package per directory, so the server lives together in `internal/se
 | `pdu.go` | room authorization rules (room versions 10/11), signed events, event graph |
 | `rooms.go` | create/join/invite/kick/ban, send, state, history, threads, aliases, room directory |
 | `sync.go` | `/sync` long-polling, filters, encrypted device-list changes |
+| `slidingsync.go` | sliding sync (what Element X uses): room lists, sending only what changed, extensions |
 | `account.go` | profile, account data, push rules, typing, read receipts |
 | `e2ee.go` | device keys, one-time keys, cross-signing, to-device messages, key backup |
 | `media.go` | file upload/download, thumbnails |
@@ -323,14 +324,15 @@ test server before running the suites again.
 Push a tag starting with `v`; GitHub Actions builds the x86 and ARM binaries and publishes a release:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
 ## Supported
 
 Registration (optional token), login, multiple devices, password change · create rooms (DM / group
 / public), invite, join, leave, kick, ban · send, edit, reactions, redaction · threads · history
-pagination, jump to an event · read receipts, unread counts, typing · room aliases, public room
+pagination, jump to an event · **sliding sync** for Element X (room lists, subscriptions, to-device /
+E2EE / receipts / typing / account data extensions) · the old `r0` API paths · read receipts, unread counts, typing · room aliases, public room
 directory, user search · avatar & display name · end-to-end encryption (key upload/query/claim,
 cross-signing, to-device messages, key backup) · file & image upload, thumbnails · push rules and
 **push notifications** · **admin commands** (CLI and admin room) · per-user media quota ·

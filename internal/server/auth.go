@@ -257,7 +257,7 @@ func (s *Server) hVersions(w http.ResponseWriter, r *http.Request, _ *Session) (
 	return map[string]any{
 		"versions": []string{"r0.6.1", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5", "v1.6", "v1.7",
 			"v1.8", "v1.9", "v1.10", "v1.11"},
-		"unstable_features": map[string]any{},
+		"unstable_features": map[string]any{"org.matrix.simplified_msc3575": true},
 	}, nil
 }
 

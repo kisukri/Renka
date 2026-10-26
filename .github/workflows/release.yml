@@ -1,7 +1,5 @@
 name: Release
 
-# Push a tag like v0.1.0 to build Linux binaries and publish a GitHub release:
-#   git tag v0.1.0 && git push origin v0.1.0
 on:
   push:
     tags: ["v*"]
