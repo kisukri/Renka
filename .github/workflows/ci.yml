@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: CGO_ENABLED=0 go build -o renka ./cmd/renka
+      - name: Vet
+        run: go vet ./...
+      - name: Unit tests (race detector)
+        run: go test -race -count=1 ./...
+      - name: Fuzz (short)
+        run: |
+          for f in FuzzEndpoints FuzzToInt FuzzValidatePowerLevels FuzzPickThumbSize FuzzPushRules FuzzCanonicalJSON FuzzParseXMatrix FuzzAuthRules FuzzParsePDU; do
+            go test -run='^$' -fuzz="^$f\$" -fuzztime=20s ./internal/server
+          done
+      - name: API and edge-case tests
+        run: |
+          ./renka -config test/test.conf > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8008/_matrix/client/versions >/dev/null && break; sleep 0.5; done
+          python3 test/api_test.py
+          python3 test/edge_test.py   # last: it trips the login rate limit
+          ! grep -E "panic|internal error" server.log
+      - name: Server log
+        if: failure()
+        run: cat server.log

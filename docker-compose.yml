@@ -1,0 +1,18 @@
+services:
+  renka:
+    build: .
+    image: renka
+    restart: unless-stopped
+    # Only expose to localhost; put HTTPS (Caddy/Nginx) in front.
+    ports:
+      - "127.0.0.1:8008:8008"
+    volumes:
+      - ./data:/data
+    # Hardening: the binary writes only under /data, binds a high port, and
+    # needs no privileges, so lock everything else down.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m

@@ -1,0 +1,21 @@
+# build output
+/renka
+/renka.exe
+/dist/
+
+# runtime data (database, uploaded media) - never commit
+/data/
+/test/data/
+*.db
+*.db-wal
+*.db-shm
+
+# local config with real domain / registration token
+/renka.conf
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/

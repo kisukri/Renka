@@ -1,0 +1,9 @@
+# 説明は README の「リバースプロキシと HTTPS」を見てください。
+matrix.example.com {
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy /_matrix/* 127.0.0.1:8008
+	reverse_proxy /.well-known/matrix/* 127.0.0.1:8008
+	reverse_proxy / 127.0.0.1:8008
+}

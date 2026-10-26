@@ -1,0 +1,16 @@
+# Keep the build context minimal and never ship local data or secrets.
+.git
+data
+test/data
+*.db
+*.db-wal
+*.db-shm
+renka
+renka.exe
+dist
+renka.conf
+.github
+test
+deploy
+README.md
+LICENSE

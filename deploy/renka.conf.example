@@ -1,0 +1,25 @@
+# Renka の設定。各項目の説明は README の「設定」を見てください。
+
+# server_name はドメインだけ（あとから変えない）、public_base_url は https:// から
+server_name = matrix.example.com
+public_base_url = https://matrix.example.com
+listen = 127.0.0.1:8008
+
+database = /var/lib/renka/renka.db
+media_dir = /var/lib/renka/media
+
+registration = false
+# registration_token = ランダムな文字列
+
+max_upload_mb = 50
+media_quota_mb = 1024
+remote_media_cache_mb = 1024
+
+push = true
+federation = false
+# trusted_key_servers = matrix.org
+# federation_address = matrix.example.com:443
+
+search_all_users = false
+memory_limit_mb = 64
+trust_proxy = true
